@@ -9,8 +9,12 @@ document.getElementById("loginForm").addEventListener("submit", async function (
     try {
         const response = await axios.post('/login', formData);
 
+        const token = response.data.token;
+        localStorage.setItem("token", token);
+        console.log(token);
+
         if (response.data.success) {
-            alert("Login successful!");
+            window.location.href = "/dashboard.html";
         } else {
             alert("Login failed: " + response.data.message);
         }
