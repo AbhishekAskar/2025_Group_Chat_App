@@ -2,6 +2,7 @@ require('dotenv').config();
 const User = require('../Models/userModel');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { getuid } = require('process');
 const SECRET_KEY = process.env.SECRET_KEY;
 
 const addUser = async (req, res) => {
@@ -51,7 +52,21 @@ const loginUser = async (req, res) => {
     }
 };
 
+const getUserDetails = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).send("User not found");
+
+    res.status(200).json({ name: user.name });
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Error getting user");
+  }
+};
+
+
 module.exports = {
     addUser,
-    loginUser
+    loginUser,
+    getUserDetails
 }

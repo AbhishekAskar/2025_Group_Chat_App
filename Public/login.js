@@ -14,7 +14,7 @@ document.getElementById("loginForm").addEventListener("submit", async function (
         console.log(token);
 
         if (response.data.success) {
-            window.location.href = "/dashboard.html";
+            window.location.href = "/chatApp.html";
         } else {
             alert("Login failed: " + response.data.message);
         }

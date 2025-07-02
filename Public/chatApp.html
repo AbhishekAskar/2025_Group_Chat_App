@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Group Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f7f7f7;
+      padding: 20px;
+    }
+    #chat-box {
+      width: 100%;
+      max-width: 600px;
+      margin: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 400px;
+      overflow-y: auto;
+      background: white;
+    }
+    #messageForm {
+      display: flex;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    #messageInput {
+      flex: 1;
+      padding: 10px;
+    }
+    button {
+      padding: 10px 20px;
+    }
+    .message {
+      margin: 5px 0;
+    }
+    .system {
+      color: gray;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Welcome to Group Chat 💬</h2>
+  <div id="chat-box"></div>
+
+  <form id="messageForm">
+    <input type="text" id="messageInput" placeholder="Type your message..." required />
+    <button type="submit">Send</button>
+  </form>
+
+  <script src="/chatApp.js"></script>
+</body>
+</html>
