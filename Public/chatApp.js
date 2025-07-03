@@ -1,14 +1,15 @@
+// ✅ Final chatApp.js using sessionStorage to prevent tripling bug
 const token = sessionStorage.getItem("token");
 let currentUser = null;
-let lastMessageId = 0; // 🆕 Track last message shown
+let lastMessageId = 0;
+const messageSet = new Set(); // 🧠 Track shown messages
 
-// 👤 Get username from backend and store per-tab
+// 👤 Get current user's name
 async function getUsername() {
   try {
     const res = await axios.get("/user/details", {
       headers: { Authorization: `Bearer ${token}` }
     });
-
     const name = res.data.name;
     sessionStorage.setItem("username", name);
     return name;
@@ -18,49 +19,38 @@ async function getUsername() {
   }
 }
 
-// 💬 Load all messages (initial load)
-async function loadMessages(currentUser) {
-  try {
-    const res = await axios.get("/messages", {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+// 💬 Load messages from sessionStorage
+function loadMessagesFromSession(currentUser) {
+  const stored = JSON.parse(sessionStorage.getItem("chatMessages")) || [];
 
-    const chatBox = document.getElementById("chatBox");
-    chatBox.innerHTML = "";
+  stored.forEach(msg => {
+    const label = msg.sender === currentUser ? "You" : msg.sender;
+    appendMessage(`${label}: ${msg.content}`);
+    messageSet.add(msg.id);
+    lastMessageId = Math.max(lastMessageId, msg.id);
+  });
 
-    const messages = res.data;
-    const uniqueUsers = [...new Set(messages.map(msg => msg.sender))];
-
-    uniqueUsers.forEach(name => {
-      appendJoinMessage(name === currentUser ? "You joined" : `${name} joined`);
-    });
-
-    messages.forEach(msg => {
-      const label = msg.sender === currentUser ? "You" : msg.sender;
-      appendMessage(`${label}: ${msg.content}`);
-      lastMessageId = Math.max(lastMessageId, msg.id); // 🆕 Track highest message ID
-    });
-
-    scrollToBottom();
-  } catch (err) {
-    console.error("Failed to load messages", err);
-  }
+  scrollToBottom();
 }
 
-// 🔁 Real-time polling (every second)
+// 🔁 Poll backend for new messages
 async function pollNewMessages() {
   try {
     const res = await axios.get("/messages", {
       headers: { Authorization: `Bearer ${token}` }
     });
 
-    const messages = res.data;
+    const allMessages = res.data;
+    const newMessages = allMessages.filter(msg => msg.id > lastMessageId);
 
-    const newMessages = messages.filter(msg => msg.id > lastMessageId);
     newMessages.forEach(msg => {
-      const label = msg.sender === currentUser ? "You" : msg.sender;
-      appendMessage(`${label}: ${msg.content}`);
-      lastMessageId = Math.max(lastMessageId, msg.id);
+      if (!messageSet.has(msg.id)) {
+        const label = msg.sender === currentUser ? "You" : msg.sender;
+        appendMessage(`${label}: ${msg.content}`);
+        saveToSessionStorageLimited(msg);
+        messageSet.add(msg.id);
+        lastMessageId = Math.max(lastMessageId, msg.id);
+      }
     });
 
     if (newMessages.length > 0) scrollToBottom();
@@ -69,20 +59,28 @@ async function pollNewMessages() {
   }
 }
 
-// 📤 Send a message
+// 📤 Send message
 async function sendMessage(content) {
   try {
     await axios.post("/message", { content }, {
       headers: { Authorization: `Bearer ${token}` }
     });
-
-    // Don't reload entire chat — polling will catch it
   } catch (err) {
     console.error("Failed to send message", err);
   }
 }
 
-// 🧾 Append message
+// 💾 Save last 10 messages to sessionStorage
+function saveToSessionStorageLimited(message) {
+  let stored = JSON.parse(sessionStorage.getItem("chatMessages")) || [];
+  stored.push(message);
+  if (stored.length > 10) {
+    stored = stored.slice(-10); // Keep last 10
+  }
+  sessionStorage.setItem("chatMessages", JSON.stringify(stored));
+}
+
+// 🧾 Append chat message
 function appendMessage(msg) {
   const chatBox = document.getElementById("chatBox");
   const div = document.createElement("div");
@@ -90,30 +88,19 @@ function appendMessage(msg) {
   chatBox.appendChild(div);
 }
 
-// 👥 Append join info
-function appendJoinMessage(msg) {
-  const chatBox = document.getElementById("chatBox");
-  const div = document.createElement("div");
-  div.textContent = msg;
-  div.style.fontStyle = "italic";
-  div.style.color = "gray";
-  chatBox.appendChild(div);
-}
-
-// 🔓 Logout function
-function logout() {
-  sessionStorage.removeItem("token");
-  sessionStorage.clear();
-  window.location.href = "/login.html";
-}
-
-// ⬇️ Auto scroll chat
+// ⬇️ Scroll to bottom
 function scrollToBottom() {
   const chatBox = document.getElementById("chatBox");
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// ✉️ On submit
+// 🔓 Logout
+function logout() {
+  sessionStorage.clear();
+  window.location.href = "/login.html";
+}
+
+// 📩 On message submit
 document.getElementById("chatForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const input = document.getElementById("messageInput");
@@ -124,14 +111,14 @@ document.getElementById("chatForm").addEventListener("submit", async (e) => {
   }
 });
 
-// 🔘 Logout button
+// 🔘 Logout button click
 document.getElementById("logoutBtn").addEventListener("click", logout);
 
-// 🚀 On page load
+// 🚀 Initialize chat on page load
 (async () => {
   currentUser = await getUsername();
   if (currentUser) {
-    await loadMessages(currentUser);
+    loadMessagesFromSession(currentUser);
     setInterval(pollNewMessages, 1000); // ⏱️ Poll every second
   }
 })();
