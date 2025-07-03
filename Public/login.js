@@ -10,7 +10,7 @@ document.getElementById("loginForm").addEventListener("submit", async function (
         const response = await axios.post('/login', formData);
 
         const token = response.data.token;
-        localStorage.setItem("token", token);
+        sessionStorage.setItem("token", token);
         console.log(token);
 
         if (response.data.success) {

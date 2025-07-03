@@ -13,6 +13,7 @@ document.getElementById("signupForm").addEventListener("submit", async function 
 
         if (response.data.success) {
             alert("Signup successful!");
+            window.location.href = "/login.html";
         } else {
             alert("Signup failed: " + response.data.message);
         }
