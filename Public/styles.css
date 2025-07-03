@@ -1,0 +1,48 @@
+body {
+    display: flex;
+    font-family: sans-serif;
+}
+
+#groupList {
+    width: 200px;
+    border-right: 1px solid #ccc;
+    padding: 10px;
+}
+
+#groupList div {
+    cursor: pointer;
+    padding: 5px;
+}
+
+#groupList div:hover {
+    background-color: #f0f0f0;
+}
+
+#chatWindow {
+    flex: 1;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+#chatBox {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+    padding: 10px;
+}
+
+#chatForm {
+    display: flex;
+}
+
+#chatForm input {
+    flex: 1;
+    padding: 8px;
+}
+
+#chatForm button {
+    padding: 8px;
+}

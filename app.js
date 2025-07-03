@@ -11,6 +11,7 @@ require('./Models');
 
 const user = require('./Routes/userRoute');
 const messageRoutes = require("./Routes/messageRoute");
+const groupRoutes = require("./Routes/groupRoutes");
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.get("/login", (req, res) => {
 
 app.use('/', user);
 app.use("/", messageRoutes);
+app.use("/group", groupRoutes);
 
 const PORT = process.env.PORT || 3000;
 db.sync({ force: false }).then(() => {

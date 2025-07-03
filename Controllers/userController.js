@@ -2,6 +2,7 @@ require('dotenv').config();
 const User = require('../Models/userModel');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { Op } = require("sequelize");
 const { getuid } = require('process');
 const SECRET_KEY = process.env.SECRET_KEY;
 
@@ -64,9 +65,22 @@ const getUserDetails = async (req, res) => {
   }
 };
 
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.findAll({
+      where: { id: { [Op.ne]: req.user.id } },
+      attributes: ['id', 'name']
+    });
+    res.status(200).json(users);
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
 
 module.exports = {
     addUser,
     loginUser,
-    getUserDetails
+    getUserDetails,
+    getAllUsers
 }

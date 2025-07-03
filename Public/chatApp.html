@@ -1,45 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <title>Group Chat App</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Axios CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <style>
-    #logoutBtn {
-      position: absolute;
-      top: 10px;
-      right: 20px;
-      background-color: #e74c3c;
-      color: white;
-      padding: 6px 12px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    #chatBox {
-      margin-top: 40px;
-      height: 300px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      padding: 10px;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <title>Group Chat App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="/styles.css" />
 </head>
+
 <body>
-  <h2>Welcome to the Group Chat</h2>
-  <button id="logoutBtn">Logout</button>
+    <div id="groupList">
+        <h3>My Groups</h3>
+        <button id="createGroupBtn">+ Create Group</button>
+        <div id="groupsContainer"></div>
+    </div>
 
-  <div id="chatBox"></div>
+    <div id="chatWindow">
+        <h3 id="groupName">Select a group</h3>
 
-  <form id="chatForm">
-    <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off" required />
-    <button type="submit">Send</button>
-  </form>
+        <!-- 👥 Group Members -->
+        <div id="groupMembers" style="margin-bottom: 10px; display: none;">
+            <h4>Members:</h4>
+            <ul id="membersList" style="list-style: none; padding-left: 0;"></ul>
+        </div>
 
-  <script src="/chatApp.js"></script>
+        <!-- 🙋 Invite Users -->
+        <div id="inviteSection" style="display: none;">
+            <h4>Invite Users</h4>
+            <input type="text" id="searchInput" placeholder="Search user..." />
+            <div id="userListContainer"></div>
+            <button id="inviteBtn">Invite Selected</button>
+        </div>
+
+        <!-- 💬 Chat -->
+        <div id="chatBox"></div>
+        <form id="chatForm">
+            <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" required />
+            <button type="submit">Send</button>
+        </form>
+    </div>
+
+
+    <!-- Create Group Modal -->
+    <div id="createGroupModal" style="display: none;">
+        <input type="text" id="newGroupName" placeholder="Group Name" />
+        <button id="submitGroupBtn">Create Group</button>
+        <button id="publicChatBtn">🌐 Public Chat</button>
+    </div>
+
+    <script src="/chatApp.js"></script>
 </body>
+
 </html>
