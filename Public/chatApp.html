@@ -3,62 +3,58 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>Group Chat App</title>
+    <title>Gen-Z Chat App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 
 <body>
-    <div id="chatWindow">
-        <h3 id="groupName">Select a group</h3>
+    <!-- Sidebar -->
+    <div class="sidebar" id="groupList">
+        <h2>✨ My Groups</h2>
+        <button id="createGroupBtn">➕ Create Group</button>
+        <button id="publicChatBtn">🌐 Global Chat</button>
+        <div id="groupsContainer"></div>
+        <button id="logoutBtn">🔒 Logout</button>
+    </div>
 
-        <!-- 👥 Group Members -->
-        <div id="groupMembers" style="margin-bottom: 10px; display: none;">
-            <h4>Members:</h4>
-            <ul id="membersList" style="list-style: none; padding-left: 0;"></ul>
+    <!-- Main Chat Area -->
+    <div class="main-content" id="chatWindow">
+        <h2 id="groupName">👥 Select a group</h2>
+
+        <!-- Group Info Section: Toggled -->
+        <div id="groupInfoContainer" class="panel hidden">
+            <!-- Members Panel -->
+            <section id="groupMembers">
+                <h3>👤 Members</h3>
+                <ul id="membersList"></ul>
+            </section>
+
+            <!-- Invite Users Panel -->
+            <section id="inviteSection">
+                <h3>✉️ Invite Users</h3>
+                <input type="text" id="searchInput" placeholder="Search by name, email, phone..." />
+                <div id="userListContainer"></div>
+                <button id="inviteBtn">Invite Selected</button>
+            </section>
         </div>
 
 
-        <!-- 🙋 Invite Users -->
-        <div id="inviteSection" style="display: none;">
-            <h4>Invite Users</h4>
-            <input type="text" id="searchInput" placeholder="Search by name, email, phone..." />
-            <div id="userListContainer"></div>
-            <button id="inviteBtn">Invite Selected</button>
-        </div>
+        <!-- Chat Box -->
+        <div id="chatBox" class="chat-box"></div>
 
-
-        <!-- 💬 Chat -->
-        <div id="chatBox"></div>
-        <form id="chatForm">
+        <!-- Message Input -->
+        <form id="chatForm" class="chat-form">
             <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" required />
-            <button type="submit">Send</button>
+            <button type="submit">📨</button>
         </form>
     </div>
 
-
-    <!-- Sidebar with Global Chat Button -->
-    <!-- ✅ Cleaned Up Sidebar -->
-    <div id="groupList">
-        <h3>My Groups</h3>
-        <button id="createGroupBtn">+ Create Group</button>
-        <button id="publicChatBtn">🌐 Global Chat</button>
-        <div id="groupsContainer"></div>
-
-        <!-- ✅ Logout Button -->
-        <button id="logoutBtn"
-            style="margin-top: 10px; background-color: crimson; color: white; padding: 5px 10px; border: none; border-radius: 5px;">
-            🔒 Logout
-        </button>
-    </div>
-
-
-
-    <!-- Create Group Modal -->
-    <div id="createGroupModal" style="display: none;">
+    <!-- Modal -->
+    <div id="createGroupModal" class="modal hidden">
         <input type="text" id="newGroupName" placeholder="Group Name" />
-        <button id="submitGroupBtn">Create Group</button>
+        <button id="submitGroupBtn">Create</button>
     </div>
 
     <script src="/chatApp.js"></script>

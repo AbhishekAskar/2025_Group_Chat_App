@@ -1,4 +1,5 @@
 const token = sessionStorage.getItem("token");
+
 let currentUser = null;
 let selectedGroupId = null;
 let lastMessageId = 0;
@@ -6,9 +7,18 @@ let allUsers = [];
 let currentGroupMembers = [];
 let isInGlobalChat = false;
 
+// Restore persisted state AFTER declarations
+selectedGroupId = localStorage.getItem("selectedGroupId") || null;
+isInGlobalChat = localStorage.getItem("isInGlobalChat") === "true";
+
+
 async function loadGlobalChat() {
   selectedGroupId = null;
-  isInGlobalChat = true; // 👈 very important
+  isInGlobalChat = true;
+
+  // Persist to localStorage
+  localStorage.setItem("selectedGroupId", "");
+  localStorage.setItem("isInGlobalChat", "true");
   lastMessageId = 0;
 
   document.getElementById("groupName").textContent = "🌐 Public Chat";
@@ -160,6 +170,10 @@ async function fetchGroups() {
 async function loadGroup(groupId, groupName) {
   selectedGroupId = groupId;
   isInGlobalChat = false;
+
+  // Persist to localStorage
+  localStorage.setItem("selectedGroupId", groupId);
+  localStorage.setItem("isInGlobalChat", "false");
   lastMessageId = 0;
   document.getElementById("groupName").textContent = groupName;
   document.getElementById("chatBox").innerHTML = "";
@@ -187,6 +201,14 @@ async function loadGroup(groupId, groupName) {
   }
 }
 
+document.getElementById("groupName").addEventListener("click", () => {
+  const infoContainer = document.getElementById("groupInfoContainer");
+  if (infoContainer.classList.contains("hidden")) {
+    infoContainer.classList.remove("hidden");
+  } else {
+    infoContainer.classList.add("hidden");
+  }
+});
 
 async function loadGroupMembers(groupId) {
   try {
@@ -333,7 +355,7 @@ async function pollNewMessages() {
 
 // 💬 Create Group Button Handler
 document.getElementById("createGroupBtn").addEventListener("click", () => {
-  document.getElementById("createGroupModal").style.display = "block";
+  document.getElementById("createGroupModal").classList.remove("hidden");
 });
 
 document.getElementById("submitGroupBtn").addEventListener("click", async () => {
@@ -346,8 +368,15 @@ document.getElementById("submitGroupBtn").addEventListener("click", async () => 
     });
 
     document.getElementById("newGroupName").value = "";
-    document.getElementById("createGroupModal").style.display = "none";
+    document.getElementById("createGroupModal").classList.add("hidden");
     await fetchGroups(); // refresh sidebar
+    const res = await axios.get("/group/mygroups", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const newGroup = res.data.find(g => g.name === name);
+    if (newGroup) {
+      await loadGroup(newGroup.id, newGroup.name);
+    }
   } catch (err) {
     console.error("Group creation failed", err);
   }
@@ -365,7 +394,9 @@ document.getElementById("inviteBtn").addEventListener("click", async () => {
     });
 
     alert("Users invited!");
-    renderUserCheckboxes(); // uncheck all
+    // Refresh members + checkboxes after invite
+    await loadGroupMembers(selectedGroupId);
+    renderUserCheckboxes();
   } catch (err) {
     console.error("Error inviting users", err);
   }
@@ -390,10 +421,35 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
   window.location.href = "/login.html"; // change if your login path is different
 });
 
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    document.getElementById("createGroupModal").classList.add("hidden");
+  }
+});
 
-// 🚀 Init
+
 (async () => {
   await getUsername();
   await fetchGroups();
+
+  // 👇 Restore last session (group or global)
+  if (isInGlobalChat) {
+    await loadGlobalChat();
+  } else if (selectedGroupId) {
+    // Get group name for display
+    try {
+      const res = await axios.get("/group/mygroups", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const matched = res.data.find(g => g.id == selectedGroupId);
+      if (matched) {
+        await loadGroup(matched.id, matched.name);
+      }
+    } catch (err) {
+      console.error("Failed to restore previous group", err);
+    }
+  }
+
   setInterval(pollNewMessages, 1000);
 })();
+
