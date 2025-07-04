@@ -14,6 +14,10 @@ const UserGroup = sequelize.define("userGroup", {
   groupId: {
     type: DataTypes.INTEGER,
     allowNull: false
+  },
+  isAdmin: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 });
 

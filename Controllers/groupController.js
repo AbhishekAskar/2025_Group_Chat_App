@@ -1,4 +1,5 @@
 const { Message, Group, UserGroup, User } = require('../Models');
+const { Op } = require("sequelize");
 
 // 🛠️ Create a new group
 const createGroup = async (req, res) => {
@@ -18,7 +19,8 @@ const createGroup = async (req, res) => {
     // 2️⃣ Add the creator to the group
     await UserGroup.create({
       userId: req.user.id,
-      groupId: group.id
+      groupId: group.id,
+      isAdmin: true
     });
 
     return res.status(201).json({
@@ -48,6 +50,10 @@ const inviteUsers = async (req, res) => {
 
     if (!isMember) {
       return res.status(403).json({ error: "You're not a member of this group" });
+    }
+
+    if (!isMember || !isMember.isAdmin) {
+      return res.status(403).json({ error: "Only admins can invite users" });
     }
 
     // 🔁 Add each user if not already in group
@@ -175,7 +181,8 @@ const getGroupMembers = async (req, res) => {
 
     const userList = members.map(m => ({
       id: m.user.id,
-      name: m.user.name
+      name: m.user.name,
+      isAdmin: m.isAdmin  // ✅ include admin flag
     }));
 
     res.status(200).json(userList);
@@ -230,6 +237,99 @@ const sendGlobalMessage = async (req, res) => {
   }
 };
 
+const promoteToAdmin = async (req, res) => {
+  const { groupId, userId } = req.body;
+
+  try {
+    const actingUser = await UserGroup.findOne({ where: { groupId, userId: req.user.id } });
+
+    if (!actingUser || !actingUser.isAdmin) {
+      return res.status(403).json({ error: "Only admins can promote users" });
+    }
+
+    const targetUser = await UserGroup.findOne({ where: { groupId, userId } });
+    if (!targetUser) {
+      return res.status(404).json({ error: "User not found in group" });
+    }
+
+    targetUser.isAdmin = true;
+    await targetUser.save();
+
+    res.status(200).json({ message: "User promoted to admin" });
+
+  } catch (err) {
+    console.error("Error promoting user:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+const removeUser = async (req, res) => {
+  const { groupId, userId } = req.body;
+
+  try {
+    const actingUser = await UserGroup.findOne({ where: { groupId, userId: req.user.id } });
+
+    if (!actingUser || !actingUser.isAdmin) {
+      return res.status(403).json({ error: "Only admins can remove users" });
+    }
+
+    const targetUser = await UserGroup.findOne({ where: { groupId, userId } });
+
+    if (!targetUser) {
+      return res.status(404).json({ error: "User not found in group" });
+    }
+
+    await targetUser.destroy();
+
+    res.status(200).json({ message: "User removed from group" });
+
+  } catch (err) {
+    console.error("Error removing user:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+// 🔍 Search for users to invite (excluding members)
+const searchUsers = async (req, res) => {
+  const { groupId } = req.params;
+  const query = req.query.query?.trim().toLowerCase();
+
+  if (!groupId || !query) {
+    return res.status(400).json({ error: "groupId and query are required" });
+  }
+
+  try {
+    // Step 1: Get all current members of the group
+    const members = await UserGroup.findAll({ where: { groupId } });
+    const memberIds = members.map(m => m.userId);
+
+    // Step 2: Search users by name/email/phone and exclude members
+    const users = await User.findAll({
+      where: {
+        [Op.and]: [
+          {
+            [Op.or]: [
+              { name: { [Op.like]: `%${query}%` } },
+              { email: { [Op.like]: `%${query}%` } },
+              { phone: { [Op.like]: `%${query}%` } }
+            ]
+          },
+          {
+            id: { [Op.notIn]: memberIds }
+          }
+        ]
+      },
+      attributes: ['id', 'name', 'email', 'phone']
+    });
+
+    res.status(200).json(users);
+
+  } catch (err) {
+    console.error("Search users failed:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
 module.exports = {
   createGroup,
   inviteUsers,
@@ -238,5 +338,8 @@ module.exports = {
   sendGroupMessage,
   getGroupMembers,
   sendGlobalMessage,
-  getGlobalMessages
+  getGlobalMessages,
+  promoteToAdmin,
+  removeUser,
+  searchUsers
 };
