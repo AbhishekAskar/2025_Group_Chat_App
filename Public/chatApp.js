@@ -1,4 +1,18 @@
 const token = sessionStorage.getItem("token");
+const socket = io(); // Automatically connects to the same origin
+socket.off("receive-message"); // 🔁 Remove old listeners if any
+
+socket.on("receive-message", (msg) => {
+  console.log("📥 Socket message received:", msg);
+  const isGlobal = isInGlobalChat && !msg.groupId;
+  const isCurrentGroup = selectedGroupId && msg.groupId == selectedGroupId;
+
+  if (isGlobal || isCurrentGroup) {
+    const label = msg.sender === currentUser ? "You" : msg.sender;
+    appendMessage(`${label}: ${msg.content}`);
+    scrollToBottom();
+  }
+});
 
 let currentUser = null;
 let selectedGroupId = null;
@@ -15,6 +29,10 @@ isInGlobalChat = localStorage.getItem("isInGlobalChat") === "true";
 async function loadGlobalChat() {
   selectedGroupId = null;
   isInGlobalChat = true;
+
+  if (socket.currentRoom) leaveRoom(socket.currentRoom);
+  await joinRoom("global");
+  socket.currentRoom = "global";
 
   // Persist to localStorage
   localStorage.setItem("selectedGroupId", "");
@@ -50,13 +68,20 @@ async function sendMessage(content) {
       await axios.post("/group/global/message", { content }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      socket.emit("new-message", {
+        roomId: "global",
+        message: { content, sender: currentUser }
+      });
     } catch (err) {
       console.error("Error sending global message", err);
     }
   } else {
     // Group chat
     try {
-      await axios.post(`/group/${selectedGroupId}/message`, { content }, {
+      await axios.post(`/group/${selectedGroupId}/message`, {
+        content,
+        groupId: selectedGroupId // 👈 send this for socket use
+      }, {
         headers: { Authorization: `Bearer ${token}` }
       });
     } catch (err) {
@@ -170,6 +195,10 @@ async function fetchGroups() {
 async function loadGroup(groupId, groupName) {
   selectedGroupId = groupId;
   isInGlobalChat = false;
+
+  if (socket.currentRoom) leaveRoom(socket.currentRoom);
+  await joinRoom(groupId);
+  socket.currentRoom = groupId;
 
   // Persist to localStorage
   localStorage.setItem("selectedGroupId", groupId);
@@ -327,6 +356,7 @@ async function pollNewMessages() {
         const label = msg.sender === currentUser ? "You" : msg.sender;
         appendMessage(`${label}: ${msg.content}`);
         lastMessageId = Math.max(lastMessageId, msg.id);
+localStorage.setItem("lastMessageId", lastMessageId);
       });
 
       if (newMessages.length > 0) scrollToBottom();
@@ -344,6 +374,7 @@ async function pollNewMessages() {
         const label = msg.sender === currentUser ? "You" : msg.sender;
         appendMessage(`${label}: ${msg.content}`);
         lastMessageId = Math.max(lastMessageId, msg.id);
+localStorage.setItem("lastMessageId", lastMessageId);
       });
 
       if (newMessages.length > 0) scrollToBottom();
@@ -351,6 +382,17 @@ async function pollNewMessages() {
       console.error("Polling error (group)", err);
     }
   }
+}
+
+function joinRoom(roomId) {
+  return new Promise((resolve) => {
+    socket.emit("join-room", roomId);
+    setTimeout(resolve, 100); // wait 100ms
+  });
+}
+
+function leaveRoom(roomId) {
+  socket.emit("leave-room", roomId);
 }
 
 // 💬 Create Group Button Handler
@@ -436,7 +478,6 @@ document.addEventListener("keydown", (e) => {
   if (isInGlobalChat) {
     await loadGlobalChat();
   } else if (selectedGroupId) {
-    // Get group name for display
     try {
       const res = await axios.get("/group/mygroups", {
         headers: { Authorization: `Bearer ${token}` }
@@ -450,6 +491,23 @@ document.addEventListener("keydown", (e) => {
     }
   }
 
-  setInterval(pollNewMessages, 1000);
-})();
+  // 🧼 Avoid multiple bindings
+  socket.off("receive-message");
+  socket.on("receive-message", (msg) => {
+  console.log("📥 Socket message received:", msg);
+  console.log("👀 IsInGlobalChat:", isInGlobalChat, "selectedGroupId:", selectedGroupId);
 
+  const isGlobal = isInGlobalChat && !msg.groupId;
+  const isCurrentGroup = selectedGroupId && msg.groupId == selectedGroupId;
+
+  if (isGlobal || isCurrentGroup) {
+    const label = msg.sender === currentUser ? "You" : msg.sender;
+    appendMessage(`${label}: ${msg.content}`);
+    scrollToBottom();
+  } else {
+    console.log("❌ Message ignored due to mismatch");
+  }
+});
+
+
+})();
