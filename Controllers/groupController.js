@@ -1,13 +1,15 @@
 const { Message, Group, UserGroup, User } = require('../Models');
-const getSignedUrl = require("../Utils/getMediaUrl");
+const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const path = require("path");
 const { Op } = require("sequelize");
-const AWS = require("aws-sdk");
 const multer = require("multer");
 
-const s3 = new AWS.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY,
-  secretAccessKey: process.env.AWS_SECRET_KEY,
+const s3Client = new S3Client({
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_KEY
+  },
   region: process.env.AWS_REGION
 });
 
@@ -24,7 +26,7 @@ const uploadMedia = (req, res) => {
     }
 
     const file = req.file;
-    const ext = path.extname(file.originalname); // e.g., .jpg, .mp4
+    const ext = path.extname(file.originalname);
     const fileName = `media/${Date.now()}${ext}`;
 
     const params = {
@@ -35,11 +37,18 @@ const uploadMedia = (req, res) => {
     };
 
     try {
-      const s3Data = await s3.upload(params).promise();
-      const fileUrl = await getSignedUrl(s3Client, new GetObjectCommand({
-        Bucket: process.env.S3_BUCKET,
-        Key: fileName,
-      }), { expiresIn: 3600 });
+      // Upload to S3
+      await s3Client.send(new PutObjectCommand(params));
+
+      // Generate signed URL
+      const fileUrl = await getSignedUrl(
+        s3Client,
+        new GetObjectCommand({
+          Bucket: process.env.S3_BUCKET,
+          Key: fileName,
+        }),
+        { expiresIn: 3600 }
+      );
 
       const messageText = req.body.text?.trim() || null;
 
@@ -72,6 +81,8 @@ const uploadMedia = (req, res) => {
     }
   });
 };
+
+module.exports = { uploadMedia };
 
 
 // 🛠️ Create a new group

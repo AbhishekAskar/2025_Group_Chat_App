@@ -5,6 +5,7 @@ const User = require('./userModel');
 const Message = require('./messageModel');
 const Group = require('./groupModel');
 const UserGroup = require('./userGroupModel');
+const ArchivedMessage = require('./archivedMessageModel');
 
 // ✅ Associations
 
@@ -28,5 +29,6 @@ module.exports = {
   User,
   Message,
   Group,
-  UserGroup
+  UserGroup,
+  ArchivedMessage
 };

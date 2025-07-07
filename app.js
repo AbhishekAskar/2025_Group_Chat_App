@@ -3,10 +3,12 @@ const cors = require("cors");
 const http = require("http"); // ✅ for custom server
 const { Server } = require("socket.io"); // ✅ socket.io
 const path = require("path");
+const cron = require("node-cron");
 const dotenv = require("dotenv");
 dotenv.config();
 
 const db = require('./Utils/db-connection');
+const { archiveOldMessages } = require("./Utils/archiveCron");
 require('./Models');
 
 const user = require('./Routes/userRoute');
@@ -77,6 +79,7 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3000;
 db.sync({ force: false }).then(() => {
+  cron.schedule("0 2 * * *", archiveOldMessages);
   server.listen(PORT, () => {
     console.log(`🚀 Server is live on http://localhost:${PORT}`);
   });
