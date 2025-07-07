@@ -3,13 +3,12 @@ const socket = io(); // Automatically connects to the same origin
 socket.off("receive-message"); // 🔁 Remove old listeners if any
 
 socket.on("receive-message", (msg) => {
-  console.log("📥 Socket message received:", msg);
   const isGlobal = isInGlobalChat && !msg.groupId;
   const isCurrentGroup = selectedGroupId && msg.groupId == selectedGroupId;
 
   if (isGlobal || isCurrentGroup) {
     const label = msg.sender === currentUser ? "You" : msg.sender;
-    appendMessage(`${label}: ${msg.content}`);
+    appendMessage(label, msg.text, msg.mediaUrl);
     scrollToBottom();
   }
 });
@@ -51,8 +50,10 @@ async function loadGlobalChat() {
 
     res.data.forEach(msg => {
       const label = msg.sender === currentUser ? "You" : msg.sender;
-      appendMessage(`${label}: ${msg.content}`);
+      appendMessage(label, msg.text, msg.mediaUrl);
       lastMessageId = Math.max(lastMessageId, msg.id);
+      console.log("📦 message object received:", msg);
+
     });
 
     scrollToBottom();
@@ -61,16 +62,12 @@ async function loadGlobalChat() {
   }
 }
 
-async function sendMessage(content) {
+async function sendMessage(text) {
   if (selectedGroupId === null) {
     // Global chat
     try {
-      await axios.post("/group/global/message", { content }, {
+      await axios.post("/group/global/message", { text }, {
         headers: { Authorization: `Bearer ${token}` }
-      });
-      socket.emit("new-message", {
-        roomId: "global",
-        message: { content, sender: currentUser }
       });
     } catch (err) {
       console.error("Error sending global message", err);
@@ -79,8 +76,8 @@ async function sendMessage(content) {
     // Group chat
     try {
       await axios.post(`/group/${selectedGroupId}/message`, {
-        content,
-        groupId: selectedGroupId // 👈 send this for socket use
+        text,
+        groupId: selectedGroupId
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -89,6 +86,7 @@ async function sendMessage(content) {
     }
   }
 }
+
 
 async function getUsername() {
   try {
@@ -220,8 +218,10 @@ async function loadGroup(groupId, groupName) {
 
     res.data.forEach(msg => {
       const label = msg.sender === currentUser ? "You" : msg.sender;
-      appendMessage(`${label}: ${msg.content}`);
+      appendMessage(label, msg.text, msg.mediaUrl);
       lastMessageId = Math.max(lastMessageId, msg.id);
+      console.log("📦 message object received:", msg);
+
     });
 
     scrollToBottom();
@@ -332,12 +332,59 @@ async function loadGroupMembers(groupId) {
 }
 
 
-function appendMessage(msg) {
+function appendMessage(sender, text = null, mediaUrl = null) {
   const chatBox = document.getElementById("chatBox");
   const div = document.createElement("div");
-  div.textContent = msg;
+  div.classList.add("message-bubble");
+
+  const senderLabel = document.createElement("strong");
+  senderLabel.textContent = sender + ": ";
+  div.appendChild(senderLabel);
+
+  if (text) {
+    const span = document.createElement("span");
+    span.textContent = text;
+    div.appendChild(span);
+    div.appendChild(document.createElement("br"));
+  }
+
+  if (mediaUrl) {
+    const mediaType = getMediaType(mediaUrl); // 👇 helper below
+
+    if (mediaType === "image") {
+      const img = document.createElement("img");
+      img.src = mediaUrl;
+      img.alt = "Image";
+      img.classList.add("chat-image");
+      div.appendChild(img);
+    } else if (mediaType === "video") {
+      const video = document.createElement("video");
+      video.src = mediaUrl;
+      video.controls = true;
+      video.classList.add("chat-video");
+      div.appendChild(video);
+    } else {
+      const fileLink = document.createElement("a");
+      fileLink.href = mediaUrl;
+      fileLink.target = "_blank";
+      fileLink.innerHTML = "📎 Open File";
+      fileLink.classList.add("file-link");
+      div.appendChild(fileLink);
+    }
+  }
+
   chatBox.appendChild(div);
 }
+
+function getMediaType(url) {
+  const imageRegex = /\.(jpg|jpeg|png|gif)(\?.*)?$/i;
+  const videoRegex = /\.(mp4|webm|mov)(\?.*)?$/i;
+
+  if (imageRegex.test(url)) return "image";
+  if (videoRegex.test(url)) return "video";
+  return "file";
+}
+
 
 function scrollToBottom() {
   const chatBox = document.getElementById("chatBox");
@@ -354,9 +401,11 @@ async function pollNewMessages() {
       const newMessages = res.data.filter(msg => msg.id > lastMessageId);
       newMessages.forEach(msg => {
         const label = msg.sender === currentUser ? "You" : msg.sender;
-        appendMessage(`${label}: ${msg.content}`);
+        appendMessage(label, msg.text, msg.mediaUrl);
         lastMessageId = Math.max(lastMessageId, msg.id);
-localStorage.setItem("lastMessageId", lastMessageId);
+        console.log("📦 message object received:", msg);
+
+        localStorage.setItem("lastMessageId", lastMessageId);
       });
 
       if (newMessages.length > 0) scrollToBottom();
@@ -372,9 +421,11 @@ localStorage.setItem("lastMessageId", lastMessageId);
       const newMessages = res.data.filter(msg => msg.id > lastMessageId);
       newMessages.forEach(msg => {
         const label = msg.sender === currentUser ? "You" : msg.sender;
-        appendMessage(`${label}: ${msg.content}`);
+        appendMessage(label, msg.text, msg.mediaUrl);
+        console.log("📦 message object received:", msg);
+
         lastMessageId = Math.max(lastMessageId, msg.id);
-localStorage.setItem("lastMessageId", lastMessageId);
+        localStorage.setItem("lastMessageId", lastMessageId);
       });
 
       if (newMessages.length > 0) scrollToBottom();
@@ -445,16 +496,47 @@ document.getElementById("inviteBtn").addEventListener("click", async () => {
 });
 
 // 💬 Chat Form Submit
+// 💬 Chat Form Submit
 document.getElementById("chatForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const input = document.getElementById("messageInput");
+  const fileInput = document.getElementById("fileInput");
   const message = input.value.trim();
+  const file = fileInput.files[0];
+
+  if (!message && !file) return;
+
+  if (file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (message) formData.append("text", message);
+    if (selectedGroupId) formData.append("groupId", selectedGroupId);
+
+    try {
+      const res = await axios.post("/group/upload", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      console.log("✅ File uploaded:", res.data);
+    } catch (err) {
+      console.error("❌ File upload failed", err);
+    }
+
+    fileInput.value = "";
+    input.value = "";
+    return;
+  }
+
   if (message) {
     await sendMessage(message);
     input.value = "";
   }
-
 });
+
 
 document.getElementById("publicChatBtn").addEventListener("click", loadGlobalChat);
 document.getElementById("logoutBtn").addEventListener("click", () => {
@@ -494,20 +576,20 @@ document.addEventListener("keydown", (e) => {
   // 🧼 Avoid multiple bindings
   socket.off("receive-message");
   socket.on("receive-message", (msg) => {
-  console.log("📥 Socket message received:", msg);
-  console.log("👀 IsInGlobalChat:", isInGlobalChat, "selectedGroupId:", selectedGroupId);
 
-  const isGlobal = isInGlobalChat && !msg.groupId;
-  const isCurrentGroup = selectedGroupId && msg.groupId == selectedGroupId;
+    const isGlobal = isInGlobalChat && !msg.groupId;
+    const isCurrentGroup = selectedGroupId && msg.groupId == selectedGroupId;
 
-  if (isGlobal || isCurrentGroup) {
-    const label = msg.sender === currentUser ? "You" : msg.sender;
-    appendMessage(`${label}: ${msg.content}`);
-    scrollToBottom();
-  } else {
-    console.log("❌ Message ignored due to mismatch");
-  }
-});
+    if (isGlobal || isCurrentGroup) {
+      const label = msg.sender === currentUser ? "You" : msg.sender;
+      appendMessage(label, msg.text, msg.mediaUrl);
+      console.log("📦 message object received:", msg);
+
+      scrollToBottom();
+    } else {
+      console.log("❌ Message ignored due to mismatch");
+    }
+  });
 
 
 })();

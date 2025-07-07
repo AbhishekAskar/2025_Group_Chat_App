@@ -1,5 +1,78 @@
 const { Message, Group, UserGroup, User } = require('../Models');
+const getSignedUrl = require("../Utils/getMediaUrl");
+const path = require("path");
 const { Op } = require("sequelize");
+const AWS = require("aws-sdk");
+const multer = require("multer");
+
+const s3 = new AWS.S3({
+  accessKeyId: process.env.AWS_ACCESS_KEY,
+  secretAccessKey: process.env.AWS_SECRET_KEY,
+  region: process.env.AWS_REGION
+});
+
+// Multer setup
+const storage = multer.memoryStorage();
+const upload = multer({ storage }).single("file");
+
+// Upload and emit
+const uploadMedia = (req, res) => {
+  upload(req, res, async function (err) {
+    if (err || !req.file) {
+      console.error("Upload error:", err);
+      return res.status(400).send("File upload failed");
+    }
+
+    const file = req.file;
+    const ext = path.extname(file.originalname); // e.g., .jpg, .mp4
+    const fileName = `media/${Date.now()}${ext}`;
+
+    const params = {
+      Bucket: process.env.S3_BUCKET,
+      Key: fileName,
+      Body: file.buffer,
+      ContentType: file.mimetype
+    };
+
+    try {
+      const s3Data = await s3.upload(params).promise();
+      const fileUrl = await getSignedUrl(s3Client, new GetObjectCommand({
+        Bucket: process.env.S3_BUCKET,
+        Key: fileName,
+      }), { expiresIn: 3600 });
+
+      const messageText = req.body.text?.trim() || null;
+
+      const newMessage = await Message.create({
+        text: messageText,
+        mediaUrl: fileUrl,
+        userId: req.user.id,
+        groupId: req.body.groupId || null,
+      });
+
+      const user = await User.findByPk(req.user.id);
+      const io = req.app.get("io");
+
+      const messagePayload = {
+        id: newMessage.id,
+        text: messageText,
+        mediaUrl: fileUrl,
+        sender: user.name,
+        createdAt: newMessage.createdAt,
+        groupId: req.body.groupId || null,
+      };
+
+      const room = messagePayload.groupId || "global";
+      io.to(room).emit("receive-message", messagePayload);
+
+      res.status(201).json({ message: "File sent", data: messagePayload });
+    } catch (uploadErr) {
+      console.error("S3 Upload failed:", uploadErr);
+      res.status(500).send("S3 upload failed");
+    }
+  });
+};
+
 
 // 🛠️ Create a new group
 const createGroup = async (req, res) => {
@@ -118,7 +191,8 @@ const getGroupMessages = async (req, res) => {
 
     const formatted = messages.map(msg => ({
       id: msg.id,
-      content: msg.content,
+      text: msg.text,
+      mediaUrl: msg.mediaUrl,
       sender: msg.user.name,
       createdAt: msg.createdAt
     }));
@@ -203,7 +277,8 @@ const getGlobalMessages = async (req, res) => {
 
     const formatted = messages.map(msg => ({
       id: msg.id,
-      content: msg.content,
+      text: msg.text,
+      mediaUrl: msg.mediaUrl,
       sender: msg.user.name,
       createdAt: msg.createdAt
     }));
@@ -216,18 +291,33 @@ const getGlobalMessages = async (req, res) => {
 };
 
 const sendGlobalMessage = async (req, res) => {
-  const { content } = req.body;
+  const { text, mediaUrl } = req.body;
 
-  if (!content || content.trim() === "") {
+  if (!text && !mediaUrl) {
     return res.status(400).json({ error: "Message cannot be empty" });
   }
 
   try {
     const newMessage = await Message.create({
-      content,
+      text,
+      mediaUrl,
       userId: req.user.id,
-      groupId: null // 🚨 Important: global chat has no groupId
+      groupId: null // global chat
     });
+
+    const user = await User.findByPk(req.user.id);
+    const io = req.app.get("io");
+
+    const messagePayload = {
+      id: newMessage.id,
+      text,
+      mediaUrl,
+      sender: user.name,
+      createdAt: newMessage.createdAt,
+      groupId: null
+    };
+
+    io.to("global").emit("receive-message", messagePayload);
 
     res.status(201).json({ message: "Global message sent", data: newMessage });
 
@@ -341,5 +431,6 @@ module.exports = {
   getGlobalMessages,
   promoteToAdmin,
   removeUser,
-  searchUsers
+  searchUsers,
+  uploadMedia
 };

@@ -55,7 +55,7 @@ io.on("connection", (socket) => {
     console.log("📢 Broadcasting message to:", roomId);
     io.to(roomId).emit("receive-message", message);
   });
-  
+
   // ✅ Leave a room
   socket.on("leave-room", (roomId) => {
     socket.leave(roomId);

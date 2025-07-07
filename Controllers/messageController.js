@@ -1,16 +1,20 @@
 const { Message, User } = require('../Models');
 
 // 💬 Save a new message and emit via socket
+
 const sendMessage = async (req, res) => {
   try {
-    const { content } = req.body;
+    const { text, mediaUrl, groupId } = req.body;
 
-    if (!content) return res.status(400).send("Message cannot be empty");
+    if (!text && !mediaUrl) {
+      return res.status(400).send("Message cannot be empty");
+    }
 
     const newMessage = await Message.create({
-      content,
+      text,
+      mediaUrl,
       userId: req.user.id,
-      groupId: req.body.groupId || null // <--- ADD THIS if missing
+      groupId: groupId || null
     });
 
     const user = await User.findByPk(req.user.id);
@@ -18,29 +22,28 @@ const sendMessage = async (req, res) => {
 
     const messagePayload = {
       id: newMessage.id,
-      content: newMessage.content,
+      text: newMessage.text,
+      mediaUrl: newMessage.mediaUrl,
       sender: user.name,
       createdAt: newMessage.createdAt,
-      groupId: req.body.groupId || null
+      groupId: groupId || null
     };
 
+    const room = groupId || "global";
     console.log("📝 New message created:", newMessage.dataValues);
     console.log("👤 Sender:", user.name);
-    console.log("📤 Emitting to room:", messagePayload.groupId || "global");
-    console.log("📤 Emitting to room:", messagePayload.groupId || "global");
+    console.log("📤 Emitting to room:", room);
 
-    if (messagePayload.groupId) {
-      io.to(messagePayload.groupId).emit("receive-message", messagePayload);
-    } else {
-      io.to("global").emit("receive-message", messagePayload);
-    }
+    io.to(room).emit("receive-message", messagePayload);
 
     res.status(201).json({ message: "Message sent", data: newMessage });
+
   } catch (error) {
     console.error(error);
     res.status(500).send("Could not send message");
   }
 };
+
 
 
 // 📥 Get all messages with usernames
@@ -53,7 +56,8 @@ const getMessages = async (req, res) => {
 
     const formatted = messages.map(msg => ({
       id: msg.id,
-      content: msg.content,
+      text: msg.text,
+      mediaUrl: msg.mediaUrl,
       sender: msg.user.name,
       createdAt: msg.createdAt
     }));
@@ -64,6 +68,7 @@ const getMessages = async (req, res) => {
     res.status(500).send("Could not fetch messages");
   }
 };
+
 
 module.exports = {
   sendMessage,

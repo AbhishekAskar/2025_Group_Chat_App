@@ -17,6 +17,7 @@ router.get("/:groupId/messages", authenticate, groupController.getGroupMessages)
 router.post("/:groupId/message", authenticate, messageController.sendMessage);
 router.get("/:groupId/members", authenticate, groupController.getGroupMembers);
 router.get("/:groupId/search-users", authenticate, groupController.searchUsers);
+router.post("/upload", authenticate, groupController.uploadMedia);
 
 // ✅ Admin features
 router.post("/promote", authenticate, groupController.promoteToAdmin);

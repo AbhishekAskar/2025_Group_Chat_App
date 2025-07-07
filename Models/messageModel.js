@@ -7,10 +7,14 @@ const Message = sequelize.define("message", {
     autoIncrement: true,
     primaryKey: true,
   },
-  content: {
-    type: DataTypes.TEXT,
-    allowNull: false,
+  text: {
+    type: DataTypes.STRING,
+    allowNull: true,
   },
+  mediaUrl: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  }
 });
 
 module.exports = Message;
