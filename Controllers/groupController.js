@@ -13,11 +13,9 @@ const s3Client = new S3Client({
   region: process.env.AWS_REGION
 });
 
-// Multer setup
 const storage = multer.memoryStorage();
 const upload = multer({ storage }).single("file");
 
-// Upload and emit
 const uploadMedia = (req, res) => {
   upload(req, res, async function (err) {
     if (err || !req.file) {
@@ -37,10 +35,8 @@ const uploadMedia = (req, res) => {
     };
 
     try {
-      // Upload to S3
       await s3Client.send(new PutObjectCommand(params));
 
-      // Generate signed URL
       const fileUrl = await getSignedUrl(
         s3Client,
         new GetObjectCommand({
@@ -84,8 +80,6 @@ const uploadMedia = (req, res) => {
 
 module.exports = { uploadMedia };
 
-
-// 🛠️ Create a new group
 const createGroup = async (req, res) => {
   const { name } = req.body;
 
@@ -94,13 +88,11 @@ const createGroup = async (req, res) => {
   }
 
   try {
-    // 1️⃣ Create the group
     const group = await Group.create({
       name,
       createdBy: req.user.id
     });
 
-    // 2️⃣ Add the creator to the group
     await UserGroup.create({
       userId: req.user.id,
       groupId: group.id,
@@ -127,7 +119,6 @@ const inviteUsers = async (req, res) => {
   }
 
   try {
-    // ✅ Check if current user is already in the group
     const isMember = await UserGroup.findOne({
       where: { groupId, userId: req.user.id }
     });
@@ -140,7 +131,6 @@ const inviteUsers = async (req, res) => {
       return res.status(403).json({ error: "Only admins can invite users" });
     }
 
-    // 🔁 Add each user if not already in group
     const addedUsers = [];
     for (const userId of userIds) {
       const alreadyExists = await UserGroup.findOne({ where: { groupId, userId } });
@@ -185,7 +175,6 @@ const getGroupMessages = async (req, res) => {
   const { groupId } = req.params;
 
   try {
-    // Check if user belongs to group
     const member = await UserGroup.findOne({
       where: { groupId, userId: req.user.id }
     });
@@ -193,7 +182,6 @@ const getGroupMessages = async (req, res) => {
       return res.status(403).json({ error: "Not a member of this group" });
     }
 
-    // Fetch messages with sender info
     const messages = await Message.findAll({
       where: { groupId },
       include: [{ model: User, attributes: ['name'] }],
@@ -225,7 +213,6 @@ const sendGroupMessage = async (req, res) => {
   }
 
   try {
-    // Check if user belongs to group
     const member = await UserGroup.findOne({
       where: { groupId, userId: req.user.id }
     });
@@ -267,7 +254,7 @@ const getGroupMembers = async (req, res) => {
     const userList = members.map(m => ({
       id: m.user.id,
       name: m.user.name,
-      isAdmin: m.isAdmin  // ✅ include admin flag
+      isAdmin: m.isAdmin  
     }));
 
     res.status(200).json(userList);
@@ -313,7 +300,7 @@ const sendGlobalMessage = async (req, res) => {
       text,
       mediaUrl,
       userId: req.user.id,
-      groupId: null // global chat
+      groupId: null 
     });
 
     const user = await User.findByPk(req.user.id);
@@ -390,7 +377,6 @@ const removeUser = async (req, res) => {
   }
 };
 
-// 🔍 Search for users to invite (excluding members)
 const searchUsers = async (req, res) => {
   const { groupId } = req.params;
   const query = req.query.query?.trim().toLowerCase();
@@ -400,11 +386,9 @@ const searchUsers = async (req, res) => {
   }
 
   try {
-    // Step 1: Get all current members of the group
     const members = await UserGroup.findAll({ where: { groupId } });
     const memberIds = members.map(m => m.userId);
 
-    // Step 2: Search users by name/email/phone and exclude members
     const users = await User.findAll({
       where: {
         [Op.and]: [

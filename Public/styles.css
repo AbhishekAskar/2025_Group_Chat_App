@@ -253,3 +253,82 @@ body {
   color: #007bff;
   text-decoration: none;
 }
+
+/* 💻 Container Styling */
+.auth-container {
+  max-width: 400px;
+  margin: 8vh auto;
+  padding: 2rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ffffff80, #f0f0ffcc);
+  box-shadow: 0 0 20px #d1d1ff80;
+  backdrop-filter: blur(10px);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.auth-container:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px #a29bfeaa;
+}
+
+/* 💬 Header */
+.auth-container h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #6c5ce7;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+/* ✍️ Input Fields */
+.auth-container input {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: none;
+  border-radius: 10px;
+  background-color: #f8f8ff;
+  box-shadow: inset 0 0 5px #dcdcff;
+  transition: all 0.3s ease-in-out;
+}
+.auth-container input:focus {
+  outline: none;
+  background-color: #ffffff;
+  box-shadow: 0 0 5px 2px #a29bfe;
+}
+
+/* 🌈 Buttons */
+.auth-container button {
+  width: 100%;
+  padding: 0.8rem;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #6c5ce7, #a29bfe);
+  color: white;
+  font-weight: bold;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.auth-container button:hover {
+  background: linear-gradient(90deg, #a29bfe, #6c5ce7);
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+}
+
+/* 📎 Links */
+.auth-container p {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+.auth-container p a {
+  color: #6c5ce7;
+  text-decoration: none;
+  font-weight: 600;
+}
+.auth-container p a:hover {
+  text-decoration: underline;
+  color: #341f97;
+}
+

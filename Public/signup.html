@@ -1,28 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sign Up | Chat App</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
-
-<body class="auth-body signup-theme">
-  <div class="auth-container">
-    <h2>🚀 Create Your Account</h2>
-    <form id="signupForm">
+<body class="auth-body signup-theme" style="justify-content: center; align-items: center; display: flex;">
+  <div class="auth-container" style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px;">
+    <h2 style="text-align: center; margin-bottom: 20px;">🚀 Create Your Account</h2>
+    <form id="signupForm" style="display: flex; flex-direction: column; gap: 12px;">
       <input type="text" id="name" name="name" placeholder="Your Name" required />
       <input type="email" id="email" name="email" placeholder="Email" required />
       <input type="tel" id="phone" name="phone" placeholder="Phone Number" pattern="[0-9]{10}" required />
       <input type="password" id="password" name="password" placeholder="Password" minlength="6" required />
-      <button type="submit">Sign Up</button>
+      <button type="submit" style="background-color: #6c5ce7; color: white; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Sign Up</button>
     </form>
-    <p>Already have an account? <a href="/login.html">Login here</a></p>
+    <p style="margin-top: 16px; text-align: center;">Already have an account? <a href="/login.html">Login here</a></p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script src="/signup.js"></script>
 </body>
-
 </html>

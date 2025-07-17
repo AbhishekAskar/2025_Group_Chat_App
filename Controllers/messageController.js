@@ -1,6 +1,5 @@
 const { Message, User } = require('../Models');
 
-// 💬 Save a new message and emit via socket
 
 const sendMessage = async (req, res) => {
   try {
@@ -45,8 +44,6 @@ const sendMessage = async (req, res) => {
 };
 
 
-
-// 📥 Get all messages with usernames
 const getMessages = async (req, res) => {
   try {
     const messages = await Message.findAll({

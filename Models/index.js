@@ -7,17 +7,14 @@ const Group = require('./groupModel');
 const UserGroup = require('./userGroupModel');
 const ArchivedMessage = require('./archivedMessageModel');
 
-// ✅ Associations
-
-// User <-> Message (already existing)
 User.hasMany(Message, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Message.belongsTo(User, { foreignKey: 'userId' });
 
-// Group <-> Message (NEW)
+
 Group.hasMany(Message, { foreignKey: 'groupId', onDelete: 'CASCADE' });
 Message.belongsTo(Group, { foreignKey: 'groupId' });
 
-// User <-> Group (Many-to-Many via UserGroup)
+
 User.belongsToMany(Group, { through: UserGroup, foreignKey: 'userId' });
 Group.belongsToMany(User, { through: UserGroup, foreignKey: 'groupId' });
 

@@ -10,7 +10,6 @@
 </head>
 
 <body>
-    <!-- Sidebar -->
     <div class="sidebar" id="groupList">
         <h2>✨ My Groups</h2>
         <button id="createGroupBtn">➕ Create Group</button>
@@ -19,19 +18,15 @@
         <button id="logoutBtn">🔒 Logout</button>
     </div>
 
-    <!-- Main Chat Area -->
     <div class="main-content" id="chatWindow">
         <h2 id="groupName">👥 Select a group</h2>
 
-        <!-- Group Info Section: Toggled -->
         <div id="groupInfoContainer" class="panel hidden">
-            <!-- Members Panel -->
             <section id="groupMembers">
                 <h3>👤 Members</h3>
                 <ul id="membersList"></ul>
             </section>
 
-            <!-- Invite Users Panel -->
             <section id="inviteSection">
                 <h3>✉️ Invite Users</h3>
                 <input type="text" id="searchInput" placeholder="Search by name, email, phone..." />
@@ -41,10 +36,8 @@
         </div>
 
 
-        <!-- Chat Box -->
         <div id="chatBox" class="chat-box"></div>
 
-        <!-- Message Input -->
         <form id="chatForm" class="chat-form">
             <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" required />
             <input type="file" id="fileInput" style="margin-top: 5px;" />
@@ -52,7 +45,6 @@
         </form>
     </div>
 
-    <!-- Modal -->
     <div id="createGroupModal" class="modal hidden">
         <input type="text" id="newGroupName" placeholder="Group Name" />
         <button id="submitGroupBtn">Create</button>

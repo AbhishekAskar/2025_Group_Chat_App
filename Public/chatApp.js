@@ -1,6 +1,6 @@
 const token = sessionStorage.getItem("token");
-const socket = io(); // Automatically connects to the same origin
-socket.off("receive-message"); // 🔁 Remove old listeners if any
+const socket = io();
+socket.off("receive-message");
 
 socket.on("receive-message", (msg) => {
   const isGlobal = isInGlobalChat && !msg.groupId;
@@ -19,8 +19,8 @@ let lastMessageId = 0;
 let allUsers = [];
 let currentGroupMembers = [];
 let isInGlobalChat = false;
+let lastGlobalMessageId = 0;
 
-// Restore persisted state AFTER declarations
 selectedGroupId = localStorage.getItem("selectedGroupId") || null;
 isInGlobalChat = localStorage.getItem("isInGlobalChat") === "true";
 
@@ -33,7 +33,6 @@ async function loadGlobalChat() {
   await joinRoom("global");
   socket.currentRoom = "global";
 
-  // Persist to localStorage
   localStorage.setItem("selectedGroupId", "");
   localStorage.setItem("isInGlobalChat", "true");
   lastMessageId = 0;
@@ -64,7 +63,6 @@ async function loadGlobalChat() {
 
 async function sendMessage(text) {
   if (selectedGroupId === null) {
-    // Global chat
     try {
       await axios.post("/group/global/message", { text }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -73,7 +71,6 @@ async function sendMessage(text) {
       console.error("Error sending global message", err);
     }
   } else {
-    // Group chat
     try {
       await axios.post(`/group/${selectedGroupId}/message`, {
         text,
@@ -152,7 +149,6 @@ async function renderUserCheckboxes() {
 }
 
 document.getElementById("searchInput").addEventListener("input", () => {
-  // Wait 300ms before firing search (to avoid spamming server)
   clearTimeout(window._searchTimeout);
   window._searchTimeout = setTimeout(renderUserCheckboxes, 300);
 });
@@ -198,7 +194,6 @@ async function loadGroup(groupId, groupName) {
   await joinRoom(groupId);
   socket.currentRoom = groupId;
 
-  // Persist to localStorage
   localStorage.setItem("selectedGroupId", groupId);
   localStorage.setItem("isInGlobalChat", "false");
   lastMessageId = 0;
@@ -206,10 +201,10 @@ async function loadGroup(groupId, groupName) {
   document.getElementById("chatBox").innerHTML = "";
   document.getElementById("inviteSection").style.display = "block";
 
-  await loadGroupMembers(groupId); // ✅ first load members
-  await fetchUsers();              // ✅ then fetch all users
+  await loadGroupMembers(groupId);
+  await fetchUsers();
 
-  renderUserCheckboxes();          // ✅ NOW render checkboxes
+  renderUserCheckboxes();
 
   try {
     const res = await axios.get(`/group/${groupId}/messages`, {
@@ -245,12 +240,11 @@ async function loadGroupMembers(groupId) {
       headers: { Authorization: `Bearer ${token}` }
     });
 
-    currentGroupMembers = res.data.map(m => m.id); // store member IDs
+    currentGroupMembers = res.data.map(m => m.id);
 
     const currentUserObj = res.data.find(m => m.name === currentUser);
     const isCurrentUserAdmin = currentUserObj?.isAdmin;
 
-    // Show or hide "Invite Users" section based on admin status
     document.getElementById("inviteSection").style.display = isCurrentUserAdmin ? "block" : "none";
 
     const list = document.getElementById("membersList");
@@ -262,7 +256,6 @@ async function loadGroupMembers(groupId) {
       li.style.justifyContent = "space-between";
       li.style.alignItems = "center";
 
-      // Label with (Admin) if user is admin
       let nameLabel = member.name;
       if (member.isAdmin) nameLabel += " (Admin)";
       const nameSpan = document.createElement("span");
@@ -275,7 +268,6 @@ async function loadGroupMembers(groupId) {
       const isYou = member.name === currentUser;
 
       if (isCurrentUserAdmin && !isYou) {
-        // ✅ Show "Make Admin" only if member is not admin
         if (!member.isAdmin) {
           const promoteBtn = document.createElement("button");
           promoteBtn.textContent = "Make Admin";
@@ -296,7 +288,6 @@ async function loadGroupMembers(groupId) {
           controls.appendChild(promoteBtn);
         }
 
-        // ✅ Show "Remove" only if member is not admin
         if (!member.isAdmin) {
           const removeBtn = document.createElement("button");
           removeBtn.textContent = "Remove";
@@ -349,7 +340,7 @@ function appendMessage(sender, text = null, mediaUrl = null) {
   }
 
   if (mediaUrl) {
-    const mediaType = getMediaType(mediaUrl); // 👇 helper below
+    const mediaType = getMediaType(mediaUrl);
 
     if (mediaType === "image") {
       const img = document.createElement("img");
@@ -398,14 +389,16 @@ async function pollNewMessages() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      const newMessages = res.data.filter(msg => msg.id > lastMessageId);
+      const newMessages = res.data.filter(
+        msg => msg.id > lastMessageId && msg.id !== lastGlobalMessageId
+      );
+
       newMessages.forEach(msg => {
         const label = msg.sender === currentUser ? "You" : msg.sender;
         appendMessage(label, msg.text, msg.mediaUrl);
         lastMessageId = Math.max(lastMessageId, msg.id);
-        console.log("📦 message object received:", msg);
-
-        localStorage.setItem("lastMessageId", lastMessageId);
+        lastGlobalMessageId = Math.max(lastGlobalMessageId, msg.id); // update
+        console.log("📦 message object received via polling:", msg);
       });
 
       if (newMessages.length > 0) scrollToBottom();
@@ -419,13 +412,12 @@ async function pollNewMessages() {
       });
 
       const newMessages = res.data.filter(msg => msg.id > lastMessageId);
+
       newMessages.forEach(msg => {
         const label = msg.sender === currentUser ? "You" : msg.sender;
         appendMessage(label, msg.text, msg.mediaUrl);
-        console.log("📦 message object received:", msg);
-
         lastMessageId = Math.max(lastMessageId, msg.id);
-        localStorage.setItem("lastMessageId", lastMessageId);
+        console.log("📦 message object received via polling:", msg);
       });
 
       if (newMessages.length > 0) scrollToBottom();
@@ -438,7 +430,7 @@ async function pollNewMessages() {
 function joinRoom(roomId) {
   return new Promise((resolve) => {
     socket.emit("join-room", roomId);
-    setTimeout(resolve, 100); // wait 100ms
+    setTimeout(resolve, 100);
   });
 }
 
@@ -446,7 +438,6 @@ function leaveRoom(roomId) {
   socket.emit("leave-room", roomId);
 }
 
-// 💬 Create Group Button Handler
 document.getElementById("createGroupBtn").addEventListener("click", () => {
   document.getElementById("createGroupModal").classList.remove("hidden");
 });
@@ -462,7 +453,7 @@ document.getElementById("submitGroupBtn").addEventListener("click", async () => 
 
     document.getElementById("newGroupName").value = "";
     document.getElementById("createGroupModal").classList.add("hidden");
-    await fetchGroups(); // refresh sidebar
+    await fetchGroups();
     const res = await axios.get("/group/mygroups", {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -475,7 +466,6 @@ document.getElementById("submitGroupBtn").addEventListener("click", async () => 
   }
 });
 
-// 🙋 Invite Selected Users
 document.getElementById("inviteBtn").addEventListener("click", async () => {
   const selected = Array.from(document.querySelectorAll("#userListContainer input[type='checkbox']:checked"))
     .map(cb => parseInt(cb.value));
@@ -487,7 +477,6 @@ document.getElementById("inviteBtn").addEventListener("click", async () => {
     });
 
     alert("Users invited!");
-    // Refresh members + checkboxes after invite
     await loadGroupMembers(selectedGroupId);
     renderUserCheckboxes();
   } catch (err) {
@@ -495,8 +484,6 @@ document.getElementById("inviteBtn").addEventListener("click", async () => {
   }
 });
 
-// 💬 Chat Form Submit
-// 💬 Chat Form Submit
 document.getElementById("chatForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -522,6 +509,20 @@ document.getElementById("chatForm").addEventListener("submit", async (e) => {
       });
 
       console.log("✅ File uploaded:", res.data);
+
+      const payload = res.data.data;
+
+      socket.emit("new-message", {
+        roomId: selectedGroupId || "global",
+        message: {
+          text: payload.text,
+          mediaUrl: payload.mediaUrl,
+          sender: currentUser,
+          groupId: selectedGroupId || null,
+        }
+      });
+
+
     } catch (err) {
       console.error("❌ File upload failed", err);
     }
@@ -542,7 +543,7 @@ document.getElementById("publicChatBtn").addEventListener("click", loadGlobalCha
 document.getElementById("logoutBtn").addEventListener("click", () => {
   sessionStorage.removeItem("token");
   sessionStorage.removeItem("username");
-  window.location.href = "/login.html"; // change if your login path is different
+  window.location.href = "/login.html";
 });
 
 document.addEventListener("keydown", (e) => {
@@ -556,7 +557,6 @@ document.addEventListener("keydown", (e) => {
   await getUsername();
   await fetchGroups();
 
-  // 👇 Restore last session (group or global)
   if (isInGlobalChat) {
     await loadGlobalChat();
   } else if (selectedGroupId) {
@@ -573,12 +573,16 @@ document.addEventListener("keydown", (e) => {
     }
   }
 
-  // 🧼 Avoid multiple bindings
   socket.off("receive-message");
   socket.on("receive-message", (msg) => {
 
     const isGlobal = isInGlobalChat && !msg.groupId;
     const isCurrentGroup = selectedGroupId && msg.groupId == selectedGroupId;
+
+    if (isGlobal) {
+      if (!msg.id || msg.id <= lastGlobalMessageId) return;
+      lastGlobalMessageId = msg.id;
+    }
 
     if (isGlobal || isCurrentGroup) {
       const label = msg.sender === currentUser ? "You" : msg.sender;
@@ -586,10 +590,7 @@ document.addEventListener("keydown", (e) => {
       console.log("📦 message object received:", msg);
 
       scrollToBottom();
-    } else {
-      console.log("❌ Message ignored due to mismatch");
     }
   });
-
 
 })();
